@@ -3,51 +3,65 @@ namespace Dynamickup\User;
 
 class UserEvents {
     public static function init() {
-        error_log('Initializing UserEvents');
-        add_action('user_register', [__CLASS__, 'user_registered'], 10, 1);
-        error_log('User_register hook added');
+        add_action('user_register', [__CLASS__, 'userRegistered'], 10, 1);
     }
 
-    public static function user_registered($user_id) {
-        error_log('user_registered called with user_id: ' . $user_id);
-        $user = get_userdata($user_id);
-        error_log('user_registered got user: ' . print_r($user, true));
-        $data = [
+    private static function userRegistered($userId) {
+        $user = get_userdata($userId);
+        $data = self::buildUserData($user);
+        self::sendToLaravel($data);
+    }
+
+    private static function buildUserData($user) {
+        return [
             'id' => $user->ID,
             'username' => $user->user_login,
+            'name' => $user->display_name,
+            'firstName' => get_user_meta($user->ID, 'first_name', true),
+            'lastName' => get_user_meta($user->ID, 'last_name', true),
             'email' => $user->user_email,
         ];
-        error_log('user_registered built data: ' . print_r($data, true));
-
-        self::send_to_laravel(DYNAMIK_WEBHOOK_BASE_URL . 'user/register', $data);
-        error_log('user_registered called send_to_laravel');
     }
-    private static function send_to_laravel($url, $data) {
-        error_log('Sending user data to Laravel URL: ' . $url);
-        error_log('User data: ' . json_encode($data));
 
-        $response = wp_remote_post($url, [
+    private static function sendToLaravel($data) {
+        $url = DYNAMIK_WEBHOOK_BASE_URL . 'user/register';
+        $response = wp_remote_post($url, self::buildRequestArgs($data));
+        self::handleResponse($response);
+    }
+
+    private static function buildRequestArgs($data) {
+        return [
             'method' => 'POST',
-            'body' => json_encode($data),
+            'body' => wp_json_encode($data),
             'headers' => [
                 'Content-Type' => 'application/json',
                 'X-WC-Webhook-Signature' => DYNAMIK_SIGNATURE
             ],
-        ]);
+        ];
+    }
 
+    private static function handleResponse($response) {
         if (is_wp_error($response)) {
-            error_log('Error sending user to Laravel: ' . $response->get_error_message());
-            set_transient('my_custom_webhook_error', 'Error sending user to Laravel: ' . $response->get_error_message(), 30);
+            self::handleError($response);
         } else {
-            $body = wp_remote_retrieve_body($response);
-            $decoded_body = json_decode($body, true);
+            self::handleSuccess($response);
+        }
+    }
 
-            if (isset($decoded_body['success']) && $decoded_body['success'] == true) {
-                error_log('User data sent successfully to Laravel');
-                set_transient('my_custom_webhook_success', 'User data sent successfully!', 30);
-            } else {
-                error_log('Failed to send user data to Laravel: ' . json_encode($decoded_body));
-            }
+    private static function handleError($error) {
+        error_log('Error sending user to Laravel: ' . $error->get_error_message());
+        set_transient('my_custom_webhook_error', 'Error sending user to Laravel: ' . $error->get_error_message(), 30);
+    }
+
+    private static function handleSuccess($response) {
+        $body = wp_remote_retrieve_body($response);
+        $decodedBody = json_decode($body, true);
+        if (isset($decodedBody['success']) && $decodedBody['success']) {
+            error_log('User data sent successfully to Laravel');
+            set_transient('my_custom_webhook_success', 'User data sent successfully!', 30);
+        } else {
+            error_log('Failed to send user data to Laravel: ' . wp_json_encode($decodedBody));
         }
     }
 }
+
