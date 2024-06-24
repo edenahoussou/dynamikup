@@ -4,8 +4,8 @@ namespace Dynamickup\WooCommerce;
 class WooCommerceEvents {
     public static function init() {
         error_log('Initializing WooCommerceEvents');
-        add_action('woocommerce_checkout_order_processed', [__CLASS__, 'order_created'], 10, 1);
-        error_log('Added action for woocommerce_checkout_order_processed');
+        add_action('woocommerce_order_status_completed', [__CLASS__, 'order_created'], 10, 1);
+        error_log('Added action for woocommerce_order_status_processing');
     }
 
     public static function order_created($order_id) {
@@ -27,7 +27,7 @@ class WooCommerceEvents {
 
         error_log('Generated data for order ID: ' . $order_id);
 
-        self::send_to_laravel(DYNAMIK_WEBHOOK_BASE_URL . 'order', $data);
+        self::send_to_laravel(DYNAMIK_WEBHOOK_BASE_URL . 'webhooks/order', $data);
         error_log('Sent order data to Laravel for order ID: ' . $order_id);
     }
 
@@ -40,6 +40,7 @@ class WooCommerceEvents {
             'body' => json_encode($data),
             'headers' => [
                 'Content-Type' => 'application/json',
+                'X-WC-Webhook-Signature' => DYNAMIK_SIGNATURE
             ],
         ]);
 

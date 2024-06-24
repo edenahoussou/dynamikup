@@ -31,6 +31,7 @@ class UserEvents {
             'body' => json_encode($data),
             'headers' => [
                 'Content-Type' => 'application/json',
+                'X-WC-Webhook-Signature' => DYNAMIK_SIGNATURE
             ],
         ]);
 

@@ -1,6 +1,6 @@
 <?php
 /*
-Plugin Name: DynamiK Up Webhook WORDPRESS
+Plugin Name: DynamiK Up API
 Description: DynamiK Up Webhook plugin to listen for WordPress events
 Version: 1.0
 Author: Eden Ahoussou & Banel Semasoussi
@@ -13,11 +13,13 @@ ini_set('display_errors', 1);
 
 // Prevent direct access to the file
 defined('ABSPATH') || exit;
-$webhookSecretKey = get_option('WEBHOOK_SECRET_KEY');
-if ($webhookSecretKey !== false) {
-    defined('X-WC-Webhook-Signature', $webhookSecretKey);
+
+if (defined('WEBHOOK_SECRET_KEY')) {
+    $webhook_secret_key = WEBHOOK_SECRET_KEY;
+    define('DYNAMIK_SIGNATURE', $webhook_secret_key);
+    error_log('WEBHOOK_SECRET_KEY is defined');
 } else {
-    error_log('WEBHOOK_SECRET_KEY is not defined in the options.');
+    echo 'WEBHOOK_SECRET_KEY is not defined';
     exit;
 }
 
