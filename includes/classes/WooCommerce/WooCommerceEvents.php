@@ -164,15 +164,17 @@ class WooCommerceEvents
         $expire_at = date('Y-m-d', strtotime("+" . $validity . " months"));
 
         error_log('Expire date: ' . $expire_at);
-
-        return compact('order_id', 'name', 'is_white_mark', 'number_of_test', 'product_id', 'quantity', 'price', 'validity', 'expire_at') + [
-                'order_id' => $item->get_order_id(),
-                'name' => $item->get_name(),
-                'is_white_mark' => in_array('Marque Blanche', wp_get_post_terms($item->get_product_id(), 'product_cat', ['fields' => 'names'])),
-                'product_id' => $item->get_product_id(),
-                'quantity' => $item->get_quantity(),
-                'price' => $item->get_total(),
-            ];
+        
+        return [
+            'order_id' => $item->get_order_id(),
+            'name' => $item->get_name(),
+            'is_white_mark' => in_array('Marque Blanche', wp_get_post_terms($item->get_product_id(), 'product_cat', ['fields' => 'names'])),
+            'product_id' => $item->get_product_id(),
+            'quantity' => $item->get_quantity(),
+            'price' => $item->get_total(),
+            'validity' => isset($validity) ? $validity : null, // Assuming $validity might be defined elsewhere
+            'expire_at' => isset($expire_at) ? $expire_at : null, // Assuming $expire_at might be defined elsewhere
+        ];
     }
 
     /**
