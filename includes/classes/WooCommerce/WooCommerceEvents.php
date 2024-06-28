@@ -46,10 +46,10 @@ class WooCommerceEvents
             'lastname' => $order->get_billing_last_name() ?: get_user_meta($user->ID, 'last_name', true),
             'civility' => $user->user_civility,
             'address' => $order->get_billing_address_1(),
-            'birth' => $user->birth,
+            'birth' => $order->get_meta('_billing_birth'),
             'email' => $user->email,
-            'organization' => $user->organization,
-            'language' => $user->language,
+            'organization' => $order->get_billing_company() ?: $user->organization,
+            'language' => $order->get_meta('_billing_language') ?: 'fr',
             'function' => $user->function,
             'phone' => $order->get_billing_phone() ?: $user->phone,
             'admin' => self::build_user_data($order, $user),
@@ -57,6 +57,8 @@ class WooCommerceEvents
             'offer_subscription' => self::build_offer_subscription($order_items),
             'custom_offer' => self::build_custom_offer($order_items),
         ];
+
+        error_log('Order data: ' . print_r($data, true));
 
         return $data;
     }
@@ -73,7 +75,7 @@ class WooCommerceEvents
         return [
             'firstname' =>  get_user_meta($user->ID, 'first_name', true) ?: $order->get_billing_first_name(),
             'lastname' => get_user_meta($user->ID, 'last_name', true) ?: $order->get_billing_last_name(),
-            'civility' => $user->user_civility,
+            'civility' => $order->get_meta('_billing_civility') ?: $user->user_civility,
             'email' => $user->email ?: $order->get_billing_email(),
         ];
     }
@@ -107,7 +109,7 @@ class WooCommerceEvents
         $offers = [];
 
         foreach ($order_items as $item) {
-            $offers[] = self::build_offer($item, $item->get_meta('number_of_consultants'));
+            $offers[] = self::build_offer($item, $item->get_meta('number_of_test'));
         }
 
         return $offers;
@@ -139,17 +141,38 @@ class WooCommerceEvents
      */
     private static function build_offer($item, $number_of_test)
     {
-        return [
-            'order_id' => $item->get_order_id(),
-            'name' => $item->get_name(),
-            'is_white_mark' => !$item->is_type('simple'),
-            'number_of_test' => $number_of_test,
-            'product_id' => $item->get_product_id(),
-            'quantity' => $item->get_quantity(),
-            'price' => $item->get_total(),
-            'validity' => $item->get_meta('validity'),
-            'expire_at' => $item->get_meta('expire_at'),
-        ];
+        error_log('Building offer for item: ' . $item->get_name());
+        error_log('Item : ' . $item);
+
+        $validity = function ($item) {
+            // Check if the item is a variation and has the specific option selected
+           if($item->get_meta('pa_duree') && $item->get_meta('pa_duree') == '1-an-payable-en-12-mois'){
+               
+               return 12;
+           } 
+           else {
+
+               return 1;
+           }
+                
+        };
+
+        $validity = $validity($item);
+
+        error_log('Validity: ' . $validity);
+
+        $expire_at = date('Y-m-d', strtotime("+" . $validity . " months"));
+
+        error_log('Expire date: ' . $expire_at);
+
+        return compact('order_id', 'name', 'is_white_mark', 'number_of_test', 'product_id', 'quantity', 'price', 'validity', 'expire_at') + [
+                'order_id' => $item->get_order_id(),
+                'name' => $item->get_name(),
+                'is_white_mark' => in_array('Marque Blanche', wp_get_post_terms($item->get_product_id(), 'product_cat', ['fields' => 'names'])),
+                'product_id' => $item->get_product_id(),
+                'quantity' => $item->get_quantity(),
+                'price' => $item->get_total(),
+            ];
     }
 
     /**
@@ -162,6 +185,8 @@ class WooCommerceEvents
      */
     private static function send_to_laravel($url, $data)
     {
+        error_log('Sending order data to Laravel: ' . json_encode($data));
+
         $response = wp_remote_post($url, [
             'method' => 'POST',
             'body' => json_encode($data),
@@ -172,15 +197,17 @@ class WooCommerceEvents
         ]);
 
         if (is_wp_error($response)) {
-            set_transient('my_custom_webhook_error', 'Error sending order to Laravel: ' . $response->get_error_message(), 30);
             error_log('Error sending order to Laravel: ' . $response->get_error_message());
+            set_transient('my_custom_webhook_error', 'Error sending order to Laravel: ' . $response->get_error_message(), 30);
         } else {
             $body = wp_remote_retrieve_body($response);
             $decoded_body = json_decode($body, true);
 
             if (isset($decoded_body['message']) && $decoded_body['message'] == 'Order processed successfully.') {
+                error_log('Order data sent successfully to Laravel');
                 set_transient('my_custom_webhook_success', 'Order data sent successfully!', 30);
             } else {
+                error_log('Failed to send order data to Laravel: ' . json_encode($decoded_body));
                 set_transient('my_custom_webhook_error', 'Failed to send order data to Laravel: ' . json_encode($decoded_body), 30);
             }
         }
