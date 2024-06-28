@@ -47,7 +47,7 @@ class WooCommerceEvents
             'civility' => $user->user_civility,
             'address' => $order->get_billing_address_1(),
             'birth' => $order->get_meta('_billing_birth'),
-            'email' => $user->email,
+            'email' => get_user_meta($user->ID, 'user_email', true) ?: $order->get_billing_email(),
             'organization' => $order->get_billing_company() ?: $user->organization,
             'language' => $order->get_meta('_billing_language') ?: 'fr',
             'function' => $user->function,
