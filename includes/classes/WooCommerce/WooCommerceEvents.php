@@ -40,11 +40,11 @@ class WooCommerceEvents
      */
     private static function build_order_data($order, $user)
     {
-        $order_items = $order->get_items();
+        $order_item = $order->get_items();
         $data = [
             'firstname' => $order->get_billing_first_name() ?: get_user_meta($user->ID, 'first_name', true),
             'lastname' => $order->get_billing_last_name() ?: get_user_meta($user->ID, 'last_name', true),
-            'civility' => $user->user_civility,
+            'civility' => $user->civility ?: $order->get_meta('_billing_civility'),
             'address' => $order->get_billing_address_1(),
             'birth' => $order->get_meta('_billing_birth'),
             'email' => get_user_meta($user->ID, 'user_email', true) ?: $order->get_billing_email(),
@@ -53,9 +53,9 @@ class WooCommerceEvents
             'function' => $user->function,
             'phone' => $order->get_billing_phone() ?: $user->phone,
             'admin' => self::build_user_data($order, $user),
-            'consultants' => self::build_consultants($order_items, $order),
-            'offer_subscription' => self::build_offer_subscription($order_items),
-            'custom_offer' => self::build_custom_offer($order_items),
+            // 'consultants' => self::build_consultants($order_item, $order),
+            'offer_subscription' => self::build_offer_subscription($order_item),
+            // 'custom_offer' => self::build_custom_offer($order_items),
         ];
 
         error_log('Order data: ' . print_r($data, true));
@@ -106,10 +106,8 @@ class WooCommerceEvents
      */
     private static function build_offer_subscription($order_items)
     {
-        $offers = [];
-
         foreach ($order_items as $item) {
-            $offers[] = self::build_offer($item, $item->get_meta('number_of_test'));
+            $offers = self::build_offer($item);
         }
 
         return $offers;
@@ -117,7 +115,6 @@ class WooCommerceEvents
 
     /**
      * Builds an array of custom offers based on the given order items.
-     *
      * @param array $order_items The order items to build custom offers from.
      * @return array The array of custom offers.
      */
@@ -134,12 +131,10 @@ class WooCommerceEvents
 
     /**
      * Builds an offer based on the given item and number of tests.
-     *
      * @param object $item The item to build the offer from.
-     * @param int $number_of_test The number of tests.
      * @return array The offer as an associative array.
      */
-    private static function build_offer($item, $number_of_test)
+    private static function build_offer($item)
     {
         error_log('Building offer for item: ' . $item->get_name());
         error_log('Item : ' . $item);
@@ -169,6 +164,8 @@ class WooCommerceEvents
             'order_id' => $item->get_order_id(),
             'name' => $item->get_name(),
             'is_white_mark' => in_array('Marque Blanche', wp_get_post_terms($item->get_product_id(), 'product_cat', ['fields' => 'names'])),
+            'number_of_consultants' => get_post_meta($item->get_product_id(), 'number_of_consultants', true) ? : 1,
+            'number_of_test' => get_post_meta($item->get_product_id(), 'number_of_test', true) ? :1,
             'product_id' => $item->get_product_id(),
             'quantity' => $item->get_quantity(),
             'price' => $item->get_total(),
@@ -178,7 +175,7 @@ class WooCommerceEvents
     }
 
     /**
-     * Sends data to a Laravel endpoint via a POST request.
+     * Sends data to Dynamik Up endpoint via a POST request.
      *
      * @param string $url The URL of the Laravel endpoint.
      * @param array $data The data to be sent.
