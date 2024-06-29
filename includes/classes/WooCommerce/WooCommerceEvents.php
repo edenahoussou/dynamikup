@@ -183,15 +183,23 @@ class WooCommerceEvents
      * @return void
      */
     private static function send_to_laravel($url, $data)
-    {
-        error_log('Sending order data to Laravel: ' . json_encode($data));
+    {       // Convertir les données en JSON
+        $body = json_encode($data);
+    
+        // Générer la signature HMAC SHA256
+        $secret = DYNAMIK_SIGNATURE; // Assurez-vous d'utiliser le même secret que votre API Laravel
+        $signature = hash_hmac('sha256', $body, $secret);
 
+        //log
+    
+        // Préparation de la requête
         $response = wp_remote_post($url, [
-            'method' => 'POST',
-            'body' => json_encode($data),
-            'headers' => [
+            'method'    => 'POST',
+            'timeout'   => 45,
+            'body'      => $body,
+            'headers'   => [
                 'Content-Type' => 'application/json',
-                'X-WC-Webhook-Signature' => DYNAMIK_SIGNATURE,
+                'X-WC-Webhook-Signature' => $signature, // Utiliser la signature générée dynamiquement
             ],
         ]);
 
