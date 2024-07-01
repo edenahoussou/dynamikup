@@ -2,6 +2,10 @@
 
 namespace Dynamickup\WooCommerce;
 
+use Exception;
+
+
+
 class WooCommerceEvents
 {
     public static function init()
@@ -201,6 +205,8 @@ class WooCommerceEvents
                 'Content-Type' => 'application/json',
                 'X-WC-Webhook-Signature' => $signature, // Utiliser la signature générée dynamiquement
             ],
+            'blocking' => true,
+            'sslverify' => false,
         ]);
 
         if (is_wp_error($response)) {
@@ -211,12 +217,34 @@ class WooCommerceEvents
             $decoded_body = json_decode($body, true);
 
             if (isset($decoded_body['message']) && $decoded_body['message'] == 'Order processed successfully.') {
-                error_log('Order data sent successfully to Laravel');
+                error_log('Order data sent successfully to Dynamik Up Saas: ' . json_encode($decoded_body));
+                
+                self::send_notification_to_customers($data['email'], $decoded_body['data']['authLink']);
+                
                 set_transient('my_custom_webhook_success', 'Order data sent successfully!', 30);
             } else {
                 error_log('Failed to send order data to Laravel: ' . json_encode($decoded_body));
                 set_transient('my_custom_webhook_error', 'Failed to send order data to Laravel: ' . json_encode($decoded_body), 30);
             }
+        }
+    }
+
+
+    private static function send_notification_to_customers($email, $auth_url) {
+    
+        $to = $email;
+                $subject = 'Dynamik Up Saas Order Completed';
+                $message = $auth_url;
+                $headers = "From: WordPress <wordpress@dynamikup.com/>\r\n" .
+                    "Content-type: text/plain\r\n";
+                
+        try {
+            wp_mail($to, $subject, $message, $headers);
+        } catch (Exception $e) {
+            error_log('Error sending order notification to customers: ' . $e->getMessage());
+        } finally {
+            error_log('Order notification sent successfully to customer with email: ' . $email);
+            return true;
         }
     }
 }
