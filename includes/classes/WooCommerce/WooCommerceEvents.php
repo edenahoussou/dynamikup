@@ -230,13 +230,18 @@ class WooCommerceEvents
     }
 
 
-    private static function send_notification_to_customers($email, $auth_url) {
-    
+    private static function send_notification_to_customers($email, $auth_url)
+    {
+
         $to = $email;
-                $subject = 'Dynamik Up Saas Order Completed';
-                $message = $auth_url;
-                $headers = "From: WordPress <wordpress@dynamikup.com/>\r\n" .
-                    "Content-type: text/plain\r\n";
+        $subject = 'Dynamik Up Saas - Initialisation du mot de passe';
+        $message = 'Bonjour,';
+        $message .= '<br><br>Votre compte Dynamik Up Saas a été crée avec succes. Pour commencer à utiliser votre compte, cliquez sur le lien ci-dessous.';
+        $message .= '<br><a href="' . $auth_url . '">Create Password</a>';
+        $message .= '<br><br>Cordialement,';
+        $message .= '<br>Dynamik Up Saas';
+        $headers = "From: WordPress <wordpress@dynamikup.com/>\r\n" .
+        "Content-type: text/plain\r\n";
                 
         try {
             wp_mail($to, $subject, $message, $headers);
