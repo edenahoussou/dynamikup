@@ -58,9 +58,13 @@ class WooCommerceEvents
             'phone' => $order->get_billing_phone() ?: $user->phone,
             'admin' => self::build_user_data($order, $user),
             // 'consultants' => self::build_consultants($order_item, $order),
-            'offer_subscription' => self::build_offer_subscription($order_item),
-            // 'custom_offer' => self::build_custom_offer($order_items),
         ];
+
+        if ($order_item[0]->get_product_id() == 601) {
+            $data['custom_offer'] = self::build_custom_offer($order_item);
+        } else {
+            $data['offer_subscription'] = self::build_offer_subscription($order_item);
+        }
 
         error_log('Order data: ' . print_r($data, true));
 
@@ -117,64 +121,58 @@ class WooCommerceEvents
         return $offers;
     }
 
+    
     /**
-     * Builds an array of custom offers based on the given order items.
-     * @param array $order_items The order items to build custom offers from.
-     * @return array The array of custom offers.
+     * Builds offers for custom subscription based on the given order items.
+     *
+     * @param array $order_items The order items to build custom subscription offers from.
+     * @return array The array of custom subscription offers.
      */
     private static function build_custom_offer($order_items)
     {
-        $offers = [];
 
         foreach ($order_items as $item) {
-            $offers[] = self::build_offer($item, 5);
+            $offers = self::build_offer($item);
         }
 
         return $offers;
     }
 
+
+
     /**
-     * Builds an offer based on the given item and number of tests.
-     * @param object $item The item to build the offer from.
-     * @return array The offer as an associative array.
+     * Builds an offer based on the given order item.
+     *
+     * @param WC_Order_Item_Product $item The order item.
+     * @return array The offer array.
      */
     private static function build_offer($item)
     {
-        error_log('Building offer for item: ' . $item->get_name());
-        error_log('Item : ' . $item);
-
-        $validity = function ($item) {
-            // Check if the item is a variation and has the specific option selected
-           if($item->get_meta('pa_duree') && $item->get_meta('pa_duree') == '1-an-payable-en-12-mois'){
-               
-               return 12;
-           } 
-           else {
-
-               return 1;
-           }
-                
-        };
-
-        $validity = $validity($item);
-
-        error_log('Validity: ' . $validity);
-
+        $product_id = $item->get_product_id();
+        $validity = $product_id == 601 ? 12 : (($item->get_meta('pa_duree') && $item->get_meta('pa_duree') == '1-an-payable-en-12-mois') ? 12 : 1);
         $expire_at = date('Y-m-d', strtotime("+" . $validity . " months"));
 
-        error_log('Expire date: ' . $expire_at);
-        
+        $number_of_tests = $product_id == 601 ? (
+            ($item->get_meta('pa_duree') && $item->get_meta('pa_duree') == 'pack-de-10-outils') ? 10 :
+            (($item->get_meta('pa_duree') && $item->get_meta('pa_duree') == 'pack-de-100-outils') ? 100 : 2)
+        ) : null;
+
+        $is_white_mark = $product_id != 601 && in_array('Marque Blanche', wp_get_post_terms($item->get_product_id(), 'product_cat', ['fields' => 'names']));
+        $number_of_consultants = $product_id != 601 ? (get_post_meta($item->get_product_id(), 'number_of_consultants', true) ?? 1) : null;
+        $number_of_tests = $product_id != 601 ? (get_post_meta($item->get_product_id(), 'number_of_test', true) ?? 1) : null;
+
         return [
             'order_id' => $item->get_order_id(),
-            'name' => $item->get_name(),
-            'is_white_mark' => in_array('Marque Blanche', wp_get_post_terms($item->get_product_id(), 'product_cat', ['fields' => 'names'])),
-            'number_of_consultants' => get_post_meta($item->get_product_id(), 'number_of_consultants', true) ? : 1,
-            'number_of_test' => get_post_meta($item->get_product_id(), 'number_of_test', true) ? :1,
-            'product_id' => $item->get_product_id(),
+            'name_of_test' => $product_id == 601 ? 'avatars' : null,
+            'name' => $product_id != 601 ? $item->get_name() : null,
+            'is_white_mark' => $is_white_mark,
+            'number_of_consultants' => $number_of_consultants,
+            'number_of_test'=> $number_of_tests,
+            'product_id' => $product_id,
             'quantity' => $item->get_quantity(),
             'price' => $item->get_total(),
-            'validity' => isset($validity) ? $validity : null, // Assuming $validity might be defined elsewhere
-            'expire_at' => isset($expire_at) ? $expire_at : null, // Assuming $expire_at might be defined elsewhere
+            'validity' => $validity,
+            'expire_at' => $expire_at
         ];
     }
 
@@ -187,23 +185,20 @@ class WooCommerceEvents
      * @return void
      */
     private static function send_to_laravel($url, $data)
-    {       // Convertir les données en JSON
+    {    
         $body = json_encode($data);
     
-        // Générer la signature HMAC SHA256
-        $secret = DYNAMIK_SIGNATURE; // Assurez-vous d'utiliser le même secret que votre API Laravel
+        $secret = DYNAMIK_SIGNATURE;
         $signature = hash_hmac('sha256', $body, $secret);
 
-        //log
     
-        // Préparation de la requête
         $response = wp_remote_post($url, [
             'method'    => 'POST',
             'timeout'   => 45,
             'body'      => $body,
             'headers'   => [
                 'Content-Type' => 'application/json',
-                'X-WC-Webhook-Signature' => $signature, // Utiliser la signature générée dynamiquement
+                'X-WC-Webhook-Signature' => $signature,
             ],
             'blocking' => true,
             'sslverify' => false,
@@ -230,13 +225,21 @@ class WooCommerceEvents
     }
 
 
+    /**
+     * Sends a notification email to customers with a password initialization link.
+     *
+     * @param string $email The email address of the customer.
+     * @param string $auth_url The URL for the customer to initialize their password.
+     * @throws Exception If there is an error sending the email.
+     * @return bool True if the email was sent successfully.
+     */
     private static function send_notification_to_customers($email, $auth_url)
     {
 
         $to = $email;
         $subject = 'Dynamik Up Saas - Initialisation du mot de passe';
         $message = 'Bonjour,';
-        $message .= '<br><br>Votre compte Dynamik Up Saas a été crée avec succes. Pour commencer à utiliser votre compte, cliquez sur le lien ci-dessous.';
+        $message .= '<br><br>Votre compte Dynamik Up Saas a été crée avec succes. pour terminer votre inscription, cliquez sur le lien ci-dessous.';
         $message .= '<br><a href="' . $auth_url . '">Create Password</a>';
         $message .= '<br><br>Cordialement,';
         $message .= '<br>Dynamik Up Saas';
