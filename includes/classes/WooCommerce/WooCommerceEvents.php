@@ -59,12 +59,19 @@ class WooCommerceEvents
             'admin' => self::build_user_data($order, $user),
             // 'consultants' => self::build_consultants($order_item, $order),
         ];
+        
 
-        if ($order_item[0]->get_product_id() == 601) {
-            $data['custom_offer'] = self::build_custom_offer($order_item);
-        } else {
-            $data['offer_subscription'] = self::build_offer_subscription($order_item);
-        }
+       if (!empty($order_item)) {
+           foreach ($order_item as $item) {
+               if ($item->get_product_id() == 601) {
+                   $data['custom_offer'] = self::build_custom_offer($item);
+                   break; // Assuming you only need to handle the first matching item
+               } else {
+                   $data['offer_subscription'] = self::build_offer_subscription($item);
+                   break; // Assuming you only need to handle the first item regardless
+               }
+           }
+       }
 
         error_log('Order data: ' . print_r($data, true));
 
@@ -114,11 +121,7 @@ class WooCommerceEvents
      */
     private static function build_offer_subscription($order_items)
     {
-        foreach ($order_items as $item) {
-            $offers = self::build_offer($item);
-        }
-
-        return $offers;
+        return self::build_offer($order_items);
     }
 
     
@@ -130,12 +133,7 @@ class WooCommerceEvents
      */
     private static function build_custom_offer($order_items)
     {
-
-        foreach ($order_items as $item) {
-            $offers = self::build_offer($item);
-        }
-
-        return $offers;
+        return self::build_offer($order_items);
     }
 
 
@@ -149,17 +147,29 @@ class WooCommerceEvents
     private static function build_offer($item)
     {
         $product_id = $item->get_product_id();
+
         $validity = $product_id == 601 ? 12 : (($item->get_meta('pa_duree') && $item->get_meta('pa_duree') == '1-an-payable-en-12-mois') ? 12 : 1);
+
         $expire_at = date('Y-m-d', strtotime("+" . $validity . " months"));
 
-        $number_of_tests = $product_id == 601 ? (
-            ($item->get_meta('pa_duree') && $item->get_meta('pa_duree') == 'pack-de-10-outils') ? 10 :
-            (($item->get_meta('pa_duree') && $item->get_meta('pa_duree') == 'pack-de-100-outils') ? 100 : 2)
-        ) : null;
+        if ($product_id == 601) {
+            $duree = $item->get_meta('pa_duree');
+
+            if ($duree && $duree == 'pack-de-10-outils') {
+                $number_of_tests = 10;
+            } elseif ($duree && $duree == 'pack-de-100-outils') {
+                $number_of_tests = 100;
+            } elseif ($duree && $duree == '2-outils-gratuits') {
+                $number_of_tests = 2;
+            }
+        }
+        else {
+            $number_of_tests = get_post_meta($item->get_product_id(), 'number_of_test', true) ?? 1;
+        }
 
         $is_white_mark = $product_id != 601 && in_array('Marque Blanche', wp_get_post_terms($item->get_product_id(), 'product_cat', ['fields' => 'names']));
-        $number_of_consultants = $product_id != 601 ? (get_post_meta($item->get_product_id(), 'number_of_consultants', true) ?? 1) : null;
-        $number_of_tests = $product_id != 601 ? (get_post_meta($item->get_product_id(), 'number_of_test', true) ?? 1) : null;
+        $number_of_consultants = $product_id != 601 ? (get_post_meta($item->get_product_id(), 'number_of_consultants', true) ?? 1) : 1;
+
 
         return [
             'order_id' => $item->get_order_id(),
