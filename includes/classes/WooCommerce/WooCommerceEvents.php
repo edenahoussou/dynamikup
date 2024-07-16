@@ -63,12 +63,12 @@ class WooCommerceEvents
 
        if (!empty($order_item)) {
            foreach ($order_item as $item) {
-               if ($item->get_product_id() == 601) {
+               if ($item->get_product_id() == 1369 || $item->get_product_id() == 1373) {
                    $data['custom_offer'] = self::build_custom_offer($item);
-                   break; // Assuming you only need to handle the first matching item
+                   break;
                } else {
                    $data['offer_subscription'] = self::build_offer_subscription($item);
-                   break; // Assuming you only need to handle the first item regardless
+                   break; 
                }
            }
        }
