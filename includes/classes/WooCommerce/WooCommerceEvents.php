@@ -173,8 +173,8 @@ class WooCommerceEvents
 
         return [
             'order_id' => $item->get_order_id(),
-            'name_of_test' => $product_id == 601 ? 'avatars' : null,
-            'name' => $product_id != 601 ? $item->get_name() : null,
+            'name_of_test' => ($item->get_product_id() == 1369 || $item->get_product_id() == 1373) ? 'avatars' : null,
+            'name' => ($item->get_product_id() != 1369 || $item->get_product_id() != 1373) ? $item->get_name() : null,
             'is_white_mark' => $is_white_mark,
             'number_of_consultants' => $number_of_consultants,
             'number_of_test'=> $number_of_tests,
@@ -204,7 +204,7 @@ class WooCommerceEvents
     
         $response = wp_remote_post($url, [
             'method'    => 'POST',
-            'timeout'   => 45,
+            'timeout'   => 3600,
             'body'      => $body,
             'headers'   => [
                 'Content-Type' => 'application/json',
@@ -248,12 +248,12 @@ class WooCommerceEvents
 
         $to = $email;
         $subject = 'Dynamik Up Saas - Initialisation du mot de passe';
-        $message = 'Bonjour,';
-        $message .= '<br><br>Votre compte Dynamik Up Saas a été crée avec succes. pour terminer votre inscription, cliquez sur le lien ci-dessous.';
-        $message .= '<br><a href="' . $auth_url . '">Create Password</a>';
-        $message .= '<br><br>Cordialement,';
-        $message .= '<br>Dynamik Up Saas';
-        $headers = "From: WordPress <wordpress@dynamikup.com/>\r\n" .
+        $message = "Bonjour,\n\n";
+        $message .= "Votre compte Dynamik Up Saas a été crée avec succes. pour terminer votre inscription, cliquez sur le lien ci-dessous.\n";
+        $message .= $auth_url . "\n";
+        $message .= "\nCordialement,\n";
+        $message .= "Dynamik Up Saas\n";
+        $headers = "From: WordPress <wordpress@dynamikup.com>\r\n" .
         "Content-type: text/plain\r\n";
                 
         try {

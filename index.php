@@ -24,7 +24,7 @@ if (defined('WEBHOOK_SECRET_KEY')) {
 }
 
 define('DYNAMIK_WEBHOOK_VERSION', '1.0');
-define('DYNAMIK_WEBHOOK_BASE_URL', 'https://staging.dynamikmood.com/api');
+define('DYNAMIK_WEBHOOK_BASE_URL', 'https://staging.dynamikmood.com/api/');
 
 function display_admin_notice()
 {
