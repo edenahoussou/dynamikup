@@ -18,8 +18,8 @@ class EmailSettings {
      */
     public static function add_admin_menu() {
         add_menu_page(
-            'Email Settings', // Page title
-            'Email Settings', // Menu title
+            'Parametre Email', // Page title
+            'Dynamik Up Api', // Menu title
             'manage_options', // Capability
             'email-settings', // Menu slug
             [__CLASS__, 'render_email_settings_page'] // Callback function
@@ -51,14 +51,14 @@ class EmailSettings {
         register_setting('email_settings', 'email_subject');
         register_setting('email_settings', 'email_body');
 
-        add_settings_section('email_settings_section', 'Email Settings', null, 'email-settings');
+        add_settings_section('email_settings_section', 'Configuration Email', null, 'email-settings');
 
-        add_settings_field('email_subject', 'Email Subject', function () {
+        add_settings_field('email_subject', 'Objet du mail', function () {
             $value = get_option('email_subject', 'Dynamik Up Saas - Initialisation du mot de passe');
             echo '<input type="text" name="email_subject" value="' . esc_attr($value) . '" class="regular-text">';
         }, 'email-settings', 'email_settings_section');
 
-        add_settings_field('email_body', 'Email Body', function () {
+        add_settings_field('email_body', 'Message du mail', function () {
             $value = get_option('email_body', "Bonjour,\n\nVotre compte Dynamik Up Saas a été crée avec succes. pour terminer votre inscription, cliquez sur le lien ci-dessous.\n{{auth_link}}\n\nCordialement,\nDynamik Up Saas");
             echo '<textarea name="email_body" class="large-text code" rows="10">' . esc_textarea($value) . '</textarea>';
             echo '<p>Use <code>{{auth_link}}</code> to insert the authentication link.</p>';
@@ -78,7 +78,7 @@ class EmailSettings {
         $body_template = get_option('email_body', "Bonjour,\n\nVotre compte Dynamik Up Saas a été crée avec succes. pour terminer votre inscription, cliquez sur le lien ci-dessous.\n{{auth_link}}\n\nCordialement,\nDynamik Up Saas");
 
         // Replace the {{auth_link}} placeholder with the actual link
-        $auth_button = '<a href="' . esc_url($auth_url) . '" style="background-color:#029de2;color:white;padding:10px 20px;text-align:center;text-decoration:none;display:inline-block;">Se Connecter</a>';
+        $auth_button = '<a href="' . esc_url($auth_url) . '" style="background-color:#029de2;color:white;padding:10px 20px;text-align:center;text-decoration:none;display:inline-block;">Vous connecter</a>';
         $body = nl2br(str_replace('{{auth_link}}', $auth_button, $body_template));
 
         $to = $email;
