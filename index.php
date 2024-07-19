@@ -61,6 +61,7 @@ function init_dynamik_webhook()
 {
     \Dynamickup\User\UserEvents::init();
     \Dynamickup\WooCommerce\WooCommerceEvents::init();
+    \Dynamickup\WooCommerce\EmailSettings::init();
 }
 
 add_action('plugins_loaded', 'init_dynamik_webhook', 0);
