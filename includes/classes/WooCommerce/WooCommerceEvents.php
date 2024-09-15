@@ -270,7 +270,11 @@ class WooCommerceEvents
                 error_log('Order data sent successfully to Dynamik Up Saas: ' . json_encode($decoded_body));
 
                 EmailSettings::send_notification_to_customers($data['email'], $decoded_body['data']['authLink']);
+                $order = wc_get_order( $data['id'] );
 
+                if ( $order ) {
+                    $order->update_status( 'completed' );
+                }
                 set_transient('my_custom_webhook_success', 'Order data sent successfully!', 30);
             } else {
                 error_log('Failed to send order data to Laravel: ' . json_encode($decoded_body));
