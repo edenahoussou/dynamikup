@@ -15,7 +15,7 @@ class WooCommerceEvents
      * @return void
      */
     {
-        add_action('woocommerce_order_status_completed', [__CLASS__, 'order_created'], 10, 1);
+        add_action('woocommerce_payment_complete', [__CLASS__, 'order_created'], 10, 1);
         add_action('woocommerce_thankyou', [__CLASS__, 'redirect_freemium_user'], 10, 1);
     }
 
@@ -208,6 +208,9 @@ class WooCommerceEvents
             $number_of_tests = get_post_meta($item->get_product_id(), 'number_of_test', true) ?? 1;
         }
 
+        $number_of_test_per_month = get_post_meta($item->get_product_id(), 'number_of_test_per_month', true) ?? 1;
+
+
         $is_white_mark = $product_id != 601 && in_array('Marque Blanche', wp_get_post_terms($item->get_product_id(), 'product_cat', ['fields' => 'names']));
         $number_of_consultants = $product_id != 601 ? (get_post_meta($item->get_product_id(), 'number_of_consultants', true) ?? 1) : 1;
 
@@ -219,6 +222,7 @@ class WooCommerceEvents
             'is_white_mark' => $is_white_mark,
             'number_of_consultants' => $number_of_consultants,
             'number_of_test' => $number_of_tests,
+            'number_of_test_per_month' => $number_of_test_per_month,
             'product_id' => $product_id,
             'quantity' => $item->get_quantity(),
             'price' => $item->get_total(),
